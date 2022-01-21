@@ -40,6 +40,10 @@ from a cywin terminal, run ./b.sh
 examine b.sh for example build command
 
 
+## flashing
+
+see https://github.com/btsimonh/hid_download_py
+
 
 ## original readme:
 
