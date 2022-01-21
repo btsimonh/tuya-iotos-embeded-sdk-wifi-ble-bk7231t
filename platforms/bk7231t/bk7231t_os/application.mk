@@ -44,6 +44,7 @@ INCLUDES += -I./beken378/app
 INCLUDES += -I./beken378/app/config
 INCLUDES += -I./beken378/app/standalone-station
 INCLUDES += -I./beken378/app/standalone-ap
+INCLUDES += -I./beken378/app/http
 INCLUDES += -I./beken378/ip/common
 INCLUDES += -I./beken378/ip/ke/
 INCLUDES += -I./beken378/ip/mac/
@@ -181,6 +182,11 @@ SRC_C += ./beken378/app/ate_app.c
 SRC_C += ./beken378/app/config/param_config.c
 SRC_C += ./beken378/app/standalone-ap/sa_ap.c
 SRC_C += ./beken378/app/standalone-station/sa_station.c
+SRC_C += ./beken378/app/http/utils_httpc.c
+SRC_C += ./beken378/app/http/utils_timer.c
+SRC_C += ./beken378/app/http/utils_net.c
+SRC_C += ./beken378/app/http/lite-log.c
+SRC_C += ./beken378/app/tftp/tftpclient.c
 
 #demo module
 SRC_C += ./beken378/demo/ieee802_11_demo.c
@@ -349,6 +355,9 @@ SRC_C += ./beken378/func/lwip_intf/lwip-2.0.2/src/core/tcp_out.c
 SRC_C += ./beken378/func/lwip_intf/lwip-2.0.2/src/core/timeouts.c
 SRC_C += ./beken378/func/lwip_intf/lwip-2.0.2/src/core/udp.c
 SRC_C += ./beken378/func/lwip_intf/lwip-2.0.2/src/netif/ethernet.c
+SRC_C += ./beken378/func/lwip_intf/lwip-2.0.2/src/apps/httpd/httpd.c
+SRC_C += ./beken378/func/lwip_intf/lwip-2.0.2/src/apps/httpd/fs.c
+SRC_C += ./beken378/func/lwip_intf/lwip-2.0.2/src/apps/mqtt/mqtt.c
 SRC_C += ./beken378/func/lwip_intf/dhcpd/dhcp-server.c
 SRC_C += ./beken378/func/lwip_intf/dhcpd/dhcp-server-main.c
 SRC_C += ./beken378/func/misc/fake_clock.c
@@ -577,7 +586,7 @@ LIBFLAGS += -L./beken378/lib/ -lble
 # add tuya iot lib compile support
 # -------------------------------------------------------------------
 
-LIBFLAGS += -L $(TOP_DIR)/sdk/lib/ -ltuya_iot
+#LIBFLAGS += -L $(TOP_DIR)/sdk/lib/ -ltuya_iot
 CFLAGS += -DUSER_SW_VER=\"$(USER_SW_VER)\" -DAPP_BIN_NAME=\"$(APP_BIN_NAME)\"
 
 

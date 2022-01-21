@@ -1205,7 +1205,7 @@ mqtt_client_connect(mqtt_client_t *client, const ip_addr_t *ip_addr, u16_t port,
   u16_t client_id_length;
   /* Length is the sum of 2+"MQTT", protocol level, flags and keep alive */
   u16_t remaining_length = 2 + 4 + 1 + 1 + 2;
-  u8_t flags = 0, will_topic_len = 0, will_msg_len = 0;
+  u8_t flags = 0, will_topic_len = 0, will_msg_len = 0, client_user_len = 0, client_pass_len = 0;
 
   LWIP_ASSERT("mqtt_client_connect: client != NULL", client != NULL);
   LWIP_ASSERT("mqtt_client_connect: ip_addr != NULL", ip_addr != NULL);
@@ -1242,6 +1242,28 @@ mqtt_client_connect(mqtt_client_t *client, const ip_addr_t *ip_addr, u16_t port,
     LWIP_ERROR("mqtt_client_connect: remaining_length overflow", len <= 0xFFFF, return ERR_VAL);
     remaining_length = (u16_t)len;
   }
+
+  if (client_info->client_user != NULL) {
+    flags |= MQTT_CONNECT_FLAG_USERNAME;
+    len = strlen(client_info->client_user);
+    LWIP_ERROR("mqtt_client_connect: client_info->client_user length overflow", len <= 0xFF, return ERR_VAL);
+    LWIP_ERROR("mqtt_client_connect: client_info->client_user length must be > 0", len > 0, return ERR_VAL);
+    client_user_len = (u8_t)len;
+    len = remaining_length + 2 + client_user_len;
+    LWIP_ERROR("mqtt_client_connect: remaining_length overflow", len <= 0xFFFF, return ERR_VAL);
+    remaining_length = (u16_t)len;
+  }
+  if (client_info->client_pass != NULL) {
+    flags |= MQTT_CONNECT_FLAG_PASSWORD;
+    len = strlen(client_info->client_pass);
+    LWIP_ERROR("mqtt_client_connect: client_info->client_pass length overflow", len <= 0xFF, return ERR_VAL);
+    LWIP_ERROR("mqtt_client_connect: client_info->client_pass length must be > 0", len > 0, return ERR_VAL);
+    client_pass_len = (u8_t)len;
+    len = remaining_length + 2 + client_pass_len;
+    LWIP_ERROR("mqtt_client_connect: remaining_length overflow", len <= 0xFFFF, return ERR_VAL);
+    remaining_length = (u16_t)len;
+  }
+
 
   /* Don't complicate things, always connect using clean session */
   flags |= MQTT_CONNECT_FLAG_CLEAN_SESSION;
@@ -1299,6 +1321,12 @@ mqtt_client_connect(mqtt_client_t *client, const ip_addr_t *ip_addr, u16_t port,
     mqtt_output_append_string(&client->output, client_info->will_topic, will_topic_len);
     mqtt_output_append_string(&client->output, client_info->will_msg, will_msg_len);
   }
+  if ((flags & MQTT_CONNECT_FLAG_USERNAME) != 0) {
+    mqtt_output_append_string(&client->output, client_info->client_user, client_user_len);
+  }
+  if ((flags & MQTT_CONNECT_FLAG_PASSWORD) != 0) {
+    mqtt_output_append_string(&client->output, client_info->client_pass, client_pass_len);
+  }
   return ERR_OK;
 
 tcp_fail:
@@ -1314,7 +1342,7 @@ tcp_fail:
  * @param client MQTT client
  */
 void
-mqtt_disconnect(mqtt_client_t *client)
+mqtt_disconnect_my2(mqtt_client_t *client)
 {
   LWIP_ASSERT("mqtt_disconnect: client != NULL", client);
   /* If connection in not already closed */

@@ -1,3 +1,48 @@
+## What is this?
+
+A modified version of the SDK published by Tuya for BK7231 series (e.g. WB2S module, or boards with the chip on board like my LED strip controller)
+
+What has been modified?  Check the commits for details.
+
+Based on this thread: https://www.elektroda.com/rtvforum/viewtopic.php?p=19833180#19833180
+
+The 'app' I was working on was 'apps/simon_light_pwm_demo', developing against a Calex LED strip controller (bk7231S based).  
+
+My development will cease, as the last thing I did was try to create an OTA flashing mechanism based on the Beken OTA file (.rbl)
+
+summary: remove Tuya lib from link, added a few Beken files, modified packaging to leave intermediate files around for anlysis, added examples from above link (some will not work because they use tuya lib), added an example of my own (no tuya). 
+
+
+
+## What is working?
+
+Wifi connect/reconnect to WPA2, wifi status logging to serial.
+
+MQTT publish
+
+TCP serving - accepts a connection, receives and sends data.
+
+HTTP serving (of a 'file')
+
+## What is not working?
+
+MQTT subscribe - crashes on receipt.
+
+HTTP client - could not get it to connect.
+
+Flashing - I tried to use an RBL file to OTA flash using the TCP server, but was not careful, and trashed the flash.  Code commented out.
+
+
+## building
+
+from a cywin terminal, run ./b.sh
+
+examine b.sh for example build command
+
+
+
+## original readme:
+
 Tuya IoTOS Embedded Wi-Fi and BLE SDK for BK7231T
 
 [中文版](README_zh.md) | [English](README.md)

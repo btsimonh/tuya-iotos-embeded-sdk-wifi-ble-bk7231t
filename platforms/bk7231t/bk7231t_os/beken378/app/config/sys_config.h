@@ -136,7 +136,7 @@
 #define CONFIG_APP_MP3PLAYER 			           0
 
 /*section 21 ----- support ota*/
-#define CFG_SUPPORT_OTA_HTTP                       0
+#define CFG_SUPPORT_OTA_HTTP                       1
 #define CFG_SUPPORT_OTA_TFTP                       0
 
 /*section 22 ----- support adc calibrate*/
