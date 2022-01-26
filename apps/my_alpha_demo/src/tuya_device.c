@@ -42,6 +42,7 @@
 #include "lwip/apps/mqtt.h"
 
 static int cnt = 0;
+static int reconnect = 0;
 
 // Long unique device name, like OpenBK7231T_AABBCCDD
 char g_deviceName[64];
@@ -208,6 +209,8 @@ void tcp_server_thread( beken_thread_arg_t arg )
 
 void connect_to_wifi(const char *oob_ssid,const char *connect_key)
 {
+    demo_sta_adv_app_init(oob_ssid, connect_key);
+  return;
 	/*network_InitTypeDef_adv_st	wNetConfigAdv;
 
 	os_memset( &wNetConfigAdv, 0x0, sizeof(network_InitTypeDef_adv_st) );
@@ -475,6 +478,20 @@ static void app_led_timer_handler(void *data)
 
 	cnt ++;
 
+    if (reconnect){
+      reconnect--;
+      bk_printf("*****reconnect %d", reconnect);
+      switch(reconnect){
+          case 1:
+              bk_wlan_stop(STATION);
+              break;
+          case 0:
+            	connect_to_wifi(DEFAULT_WIFI_SSID,DEFAULT_WIFI_PASS);
+              break;
+      }
+    }
+
+
     PR_NOTICE("Timer is %i\n",cnt);
 }
 
@@ -610,10 +627,10 @@ VOID prod_test(BOOL_T flag, SCHAR_T rssi)
  * @Others: 无
  */
 // NOTE: this is externally called from tuya_mainc
-VOID app_init(VOID)
-{
+//VOID app_init(VOID)
+//{
 
-}
+//}
 
 /**
  * @Function: pre_device_init
@@ -859,8 +876,43 @@ static int setup_wifi_open_access_point(void)
 
 
 
+//ctxt is pointer to a rw_evt_type
+void wl_status( void *ctxt ){
 
-OPERATE_RET device_init(VOID)
+    rw_evt_type stat = *((rw_evt_type*)ctxt);
+	bk_printf("wl_status %d\r\n", stat);
+
+    switch(stat){
+        case RW_EVT_STA_IDLE:
+        case RW_EVT_STA_SCANNING:
+        case RW_EVT_STA_SCAN_OVER:
+        case RW_EVT_STA_CONNECTING:
+            break;
+        case RW_EVT_STA_BEACON_LOSE:
+        case RW_EVT_STA_PASSWORD_WRONG:
+        case RW_EVT_STA_NO_AP_FOUND:
+        case RW_EVT_STA_ASSOC_FULL:
+        case RW_EVT_STA_DISCONNECTED:    /* disconnect with server */
+            // try to connect again in 5 seconds
+            reconnect = 5;
+            break;
+        case RW_EVT_STA_CONNECT_FAILED:  /* authentication failed */
+        case RW_EVT_STA_CONNECTED:	    /* authentication success */	
+        case RW_EVT_STA_GOT_IP: 
+        
+        /* for softap mode */
+        case RW_EVT_AP_CONNECTED:          /* a client association success */
+        case RW_EVT_AP_DISCONNECTED:       /* a client disconnect */
+        case RW_EVT_AP_CONNECT_FAILED:     /* a client association failed */
+        default:
+            break;
+    }
+
+}
+
+
+void app_init(VOID)
+//OPERATE_RET device_init(VOID)
 {
     OPERATE_RET op_ret = OPRT_OK;
 
@@ -870,6 +922,7 @@ OPERATE_RET device_init(VOID)
 
 	connect_to_wifi(DEFAULT_WIFI_SSID,DEFAULT_WIFI_PASS);
 	//setup_wifi_open_access_point();
+  bk_wlan_status_register_cb(wl_status);
 
 		// NOT WORKING, I done it other way, see ethernetif.c
 	//net_dhcp_hostname_set(g_shortDeviceName);
@@ -885,5 +938,5 @@ OPERATE_RET device_init(VOID)
 
 	mqtt_example_init();
 
-    return op_ret;
+  //return op_ret;
 }
