@@ -209,16 +209,16 @@ void tcp_server_thread( beken_thread_arg_t arg )
 
 void connect_to_wifi(const char *oob_ssid,const char *connect_key)
 {
-    demo_sta_adv_app_init(oob_ssid, connect_key);
-  return;
-	/*network_InitTypeDef_adv_st	wNetConfigAdv;
+//    demo_sta_adv_app_init(oob_ssid, connect_key);
+//  return;
+	network_InitTypeDef_adv_st	wNetConfigAdv;
 
 	os_memset( &wNetConfigAdv, 0x0, sizeof(network_InitTypeDef_adv_st) );
 	
 	os_strcpy((char*)wNetConfigAdv.ap_info.ssid, oob_ssid);
-	hwaddr_aton("48:ee:0c:48:93:12", wNetConfigAdv.ap_info.bssid);
+	//hwaddr_aton("48:ee:0c:48:93:12", wNetConfigAdv.ap_info.bssid);
 	wNetConfigAdv.ap_info.security = SECURITY_TYPE_WPA2_MIXED;
-	wNetConfigAdv.ap_info.channel = 5;
+	//wNetConfigAdv.ap_info.channel = 0; // leave at 0
 	
 	os_strcpy((char*)wNetConfigAdv.key, connect_key);
 	wNetConfigAdv.key_len = os_strlen(connect_key);
@@ -226,8 +226,8 @@ void connect_to_wifi(const char *oob_ssid,const char *connect_key)
 	wNetConfigAdv.wifi_retry_interval = 100;
 
 	bk_wlan_start_sta_adv(&wNetConfigAdv);
-	*/
-    network_InitTypeDef_st network_cfg;
+	
+/*    network_InitTypeDef_st network_cfg;
 	
     os_memset(&network_cfg, 0x0, sizeof(network_InitTypeDef_st));
 
@@ -237,10 +237,10 @@ void connect_to_wifi(const char *oob_ssid,const char *connect_key)
     network_cfg.wifi_mode = STATION;
     network_cfg.dhcp_mode = DHCP_CLIENT;
     network_cfg.wifi_retry_interval = 100;
-
-    bk_printf("ssid:%s key:%s\r\n", network_cfg.wifi_ssid, network_cfg.wifi_key);
+*/
+    bk_printf("ssid:%s key:%s\r\n", oob_ssid, connect_key);
 			
-    bk_wlan_start(&network_cfg);
+    //bk_wlan_start(&network_cfg);
 }
 
 
