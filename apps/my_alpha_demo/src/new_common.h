@@ -39,6 +39,13 @@ typedef unsigned int uint32_t;
 
 #include "../../beken378/func/key/multi_button.h"
 
+#undef PR_NOTICE
+#define PR_NOTICE(fmt, ...) bk_printf(fmt, ##__VA_ARGS__)
+
+#undef PR_DEBUG
+#define PR_DEBUG(fmt, ...) bk_printf(fmt, ##__VA_ARGS__)
+
+
 #endif
 
 typedef unsigned char byte;

@@ -10,10 +10,13 @@
  * @LastEditTime: 2021-01-27 17:00:00
  */
 
-#define _TUYA_DEVICE_GLOBAL
+#include "new_common.h"
 
+/*
+#define _TUYA_DEVICE_GLOBAL
+*/
 /* Includes ------------------------------------------------------------------*/
-#include "uni_log.h"
+/*#include "uni_log.h"
 #include "tuya_iot_wifi_api.h"
 #include "tuya_hal_system.h"
 #include "tuya_iot_com_api.h"
@@ -29,8 +32,8 @@
 #include "lwip/ip_addr.h"
 #include "lwip/inet.h"
 
+*/
 #include "new_config.h"
-
 
 /* Private includes ----------------------------------------------------------*/
 #include "tuya_device.h"
@@ -58,7 +61,9 @@ int my_fd = -1;
 int g_my_reconnect_mqtt_after_time = -1;
 
 
-#define tcp_server_log(M, ...) os_printf("TCP", M, ##__VA_ARGS__)
+#define tcp_server_log(M, ...) bk_printf(M, ##__VA_ARGS__)
+
+
 
 int unw_recv(const int fd, void *buf, u32 nbytes)
 {
@@ -76,7 +81,7 @@ int unw_recv(const int fd, void *buf, u32 nbytes)
     FD_SET( fd, &errfds );
 
     ret = select( fd+1, &readfds, NULL, &errfds, NULL);
-    os_printf("select ret:%d, %d, %d\r\n", ret, FD_ISSET( fd, &readfds ), FD_ISSET( fd, &errfds ));
+    bk_printf("select ret:%d, %d, %d\r\n", ret, FD_ISSET( fd, &readfds ), FD_ISSET( fd, &errfds ));
 
     if(ret > 0 && FD_ISSET( fd, &readfds ))
         return recv(fd,buf,nbytes,0); 
@@ -113,20 +118,21 @@ void tcp_client_thread( beken_thread_arg_t arg )
 
             if ( len <= 0 )
             {
-                os_printf( "TCP Client is disconnected, fd: %d", fd );
+                bk_printf( "TCP Client is disconnected, fd: %d", fd );
                 goto exit;
             }
   
-      PR_NOTICE( "TCP received string %s\n",buf );
+      bk_printf( "TCP received string %s\n",buf );
 		  
 		HTTP_ProcessPacket(buf, reply, replyBufferSize);
 
 		///	strcpy(buf,"[WB2S example TCP reply!]");
 			len = strlen(reply);
-      PR_NOTICE( "TCP sending reply len %i\n",len );
+      bk_printf( "TCP sending reply len %i\n",len );
             len = send( fd, reply, len, 0 );
 
             rtos_delay_milliseconds(10);
+            break;
         }
     }
 	
@@ -146,7 +152,7 @@ exit:
 volatile u8 test_flag = 0;
 void close_tcp_client(void)
 {
-    os_printf("close_tcp_client:%d, %p\r\n", my_fd, rtos_get_current_thread());
+    bk_printf("close_tcp_client:%d, %p\r\n", my_fd, rtos_get_current_thread());
     test_flag = 1;
     close( my_fd );
     my_fd = -1;
@@ -209,8 +215,8 @@ void tcp_server_thread( beken_thread_arg_t arg )
 
 void connect_to_wifi(const char *oob_ssid,const char *connect_key)
 {
-//    demo_sta_adv_app_init(oob_ssid, connect_key);
-//  return;
+    demo_sta_adv_app_init(oob_ssid, connect_key);
+  return;
 	network_InitTypeDef_adv_st	wNetConfigAdv;
 
 	os_memset( &wNetConfigAdv, 0x0, sizeof(network_InitTypeDef_adv_st) );
@@ -256,7 +262,7 @@ void demo_start_tcp()
 									(beken_thread_arg_t)0 );
     if(err != kNoErr)
     {
-       os_printf("create \"TCP_server\" thread failed!\r\n");
+       bk_printf("create \"TCP_server\" thread failed!\r\n");
     }
 }
 
@@ -294,7 +300,7 @@ static const struct mqtt_connect_client_info_t mqtt_client_info =
 static void mqtt_pub_request_cb(void *arg, err_t result)
 {
   if(result != ERR_OK) {
-    PR_NOTICE("Publish result: %d\n", result);
+    bk_printf("Publish result: %d\n", result);
   }
 }
 static void
@@ -320,11 +326,11 @@ void example_publish(mqtt_client_t *client, int channel, int iVal)
   myValue = CHANNEL_Check(channel);
    sprintf(pub_payload,"%i",myValue);
    
-    PR_NOTICE("calling pub: \n");
+    bk_printf("calling pub: \n");
 	sprintf(pub_topic,"wb2s/%i/get",channel);
   err = mqtt_publish(client, pub_topic, pub_payload, strlen(pub_payload), qos, retain, mqtt_pub_request_cb, 0);
   if(err != ERR_OK) {
-    PR_NOTICE("Publish err: %d\n", err);
+    bk_printf("Publish err: %d\n", err);
 	 if(err == ERR_CONN) {
 		 
 		// g_my_reconnect_mqtt_after_time = 5;
@@ -344,23 +350,23 @@ static void mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t f
 {
 	int iValue;
   const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
-  //PR_NOTICE("MQTT client in mqtt_incoming_data_cb\n");
-  PR_NOTICE("MQTT client in mqtt_incoming_data_cb data is %s for ch %i\n",data,g_incoming_channel_mqtt);
+  //bk_printf("MQTT client in mqtt_incoming_data_cb\n");
+  bk_printf("MQTT client in mqtt_incoming_data_cb data is %s for ch %i\n",data,g_incoming_channel_mqtt);
 
   iValue = atoi(data);
   CHANNEL_Set(g_incoming_channel_mqtt,iValue);
 
- // PR_NOTICE(("MQTT client \"%s\" data cb: len %d, flags %d\n", client_info->client_id, (int)len, (int)flags));
+ // bk_printf(("MQTT client \"%s\" data cb: len %d, flags %d\n", client_info->client_id, (int)len, (int)flags));
 }
 
 static void mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len)
 {
   const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
-  //PR_NOTICE("MQTT client in mqtt_incoming_publish_cb\n");
-  PR_NOTICE("MQTT client in mqtt_incoming_publish_cb topic %s\n",topic);
+  //bk_printf("MQTT client in mqtt_incoming_publish_cb\n");
+  bk_printf("MQTT client in mqtt_incoming_publish_cb topic %s\n",topic);
 // TODO: better
   g_incoming_channel_mqtt = topic[5] - '0';
- // PR_NOTICE(("MQTT client \"%s\" publish cb: topic %s, len %d\n", client_info->client_id, topic, (int)tot_len));
+ // bk_printf(("MQTT client \"%s\" publish cb: topic %s, len %d\n", client_info->client_id, topic, (int)tot_len));
 }
 
 static void
@@ -368,14 +374,14 @@ mqtt_request_cb(void *arg, err_t err)
 {
   const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
 
-  PR_NOTICE(("MQTT client \"%s\" request cb: err %d\n", client_info->client_id, (int)err));
+  bk_printf("MQTT client \"%s\" request cb: err %d\n", client_info->client_id, (int)err);
 }
 static void mqtt_sub_request_cb(void *arg, err_t result)
 {
   /* Just print the result code here for simplicity,
      normal behaviour would be to take some action if subscribe fails like
      notifying user, retry subscribe or disconnect from server */
-  PR_NOTICE("Subscribe result: %i\n", result);
+  bk_printf("Subscribe result: %i\n", result);
 }
 void example_do_connect(mqtt_client_t *client);
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status)
@@ -386,11 +392,11 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
   const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
   LWIP_UNUSED_ARG(client);
 
-//  PR_NOTICE(("MQTT client < removed name > connection cb: status %d\n",  (int)status));
- // PR_NOTICE(("MQTT client \"%s\" connection cb: status %d\n", client_info->client_id, (int)status));
+//  bk_printf(("MQTT client < removed name > connection cb: status %d\n",  (int)status));
+ // bk_printf(("MQTT client \"%s\" connection cb: status %d\n", client_info->client_id, (int)status));
 
   if (status == MQTT_CONNECT_ACCEPTED) {
-    PR_NOTICE("mqtt_connection_cb: Successfully connected\n");
+    bk_printf("mqtt_connection_cb: Successfully connected\n");
 
 
   mqtt_set_inpub_callback(mqtt_client,
@@ -407,7 +413,7 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
             mqtt_request_cb, LWIP_CONST_CAST(void*, client_info),
             1);
     if(err != ERR_OK) {
-      PR_NOTICE("mqtt_subscribe return: %d\n", err);
+      bk_printf("mqtt_subscribe return: %d\n", err);
     }
 
 
@@ -420,7 +426,7 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
     //        mqtt_request_cb, LWIP_CONST_CAST(void*, client_info),
     //        1);
   } else {
-    PR_NOTICE("mqtt_connection_cb: Disconnected, reason: %d\n", status);
+    bk_printf("mqtt_connection_cb: Disconnected, reason: %d\n", status);
     example_do_connect(client);
 
   }
@@ -445,7 +451,7 @@ void example_do_connect(mqtt_client_t *client)
 
   /* For now just print the result code if something goes wrong */
   if(err != ERR_OK) {
-    PR_NOTICE("mqtt_connect return %d\n", err);
+    bk_printf("mqtt_connect return %d\n", err);
   }
 }
 
@@ -461,14 +467,14 @@ void mqtt_example_init(void)
 
 static void app_my_channel_toggle_callback(int channel, int iVal)
 {
-    PR_NOTICE("Channel has changed! Publishing change %i with %i \n",channel,iVal);
+    bk_printf("Channel has changed! Publishing change %i with %i \n",channel,iVal);
 	example_publish(mqtt_client,channel,iVal);
 }
 int loopsWithDisconnected = 0;
 static void app_led_timer_handler(void *data)
 {
 	if(mqtt_client != 0 && mqtt_client_is_connected(mqtt_client) == 0) {
-		PR_NOTICE("Timer discovetrs disconnected mqtt %i\n",loopsWithDisconnected);
+		bk_printf("Timer discovetrs disconnected mqtt %i\n",loopsWithDisconnected);
 		loopsWithDisconnected++;
 		if(loopsWithDisconnected>10){ 
 			example_do_connect(mqtt_client);
@@ -492,7 +498,7 @@ static void app_led_timer_handler(void *data)
     }
 
 
-    PR_NOTICE("Timer is %i\n",cnt);
+    bk_printf("Timer is %i\n",cnt);
 }
 
 void myInit()
@@ -500,7 +506,9 @@ void myInit()
 
     OSStatus err;
 	
+#if 0
 	PIN_Init();
+#endif
 
 	CHANNEL_SetChangeCallback(app_my_channel_toggle_callback);
 
@@ -614,7 +622,7 @@ VOID prod_test(BOOL_T flag, SCHAR_T rssi)
         PR_ERR("Prod test failed... flag:%d, rssi:%d", flag, rssi);
         return;
     }
-    PR_NOTICE("flag:%d rssi:%d", flag, rssi);
+    bk_printf("flag:%d rssi:%d", flag, rssi);
 
 }
 
@@ -644,9 +652,9 @@ VOID pre_device_init(VOID)
 {
     PR_DEBUG("%s",tuya_iot_get_sdk_info());
     PR_DEBUG("%s:%s",APP_BIN_NAME,DEV_SW_VERSION);
-    PR_NOTICE("firmware compiled at %s %s", __DATE__, __TIME__);
-    PR_NOTICE("Hello Tuya World!");
-    PR_NOTICE("system reset reason:[%s]",tuya_hal_system_get_rst_info());
+    bk_printf("firmware compiled at %s %s", __DATE__, __TIME__);
+    bk_printf("Hello Tuya World!");
+    bk_printf("system reset reason:[%s]",tuya_hal_system_get_rst_info());
     /* 打印等级设置 */
     SetLogManageAttr(TY_LOG_LEVEL_DEBUG);
 }
@@ -828,7 +836,7 @@ static int setup_wifi_open_access_point(void)
         os_strcpy((char *)wNetConfig.dns_server_ip_addr, APP_DRONE_DEF_NET_GW);
  
 
-        PR_NOTICE("no flash configuration, use default\r\n");
+        bk_printf("no flash configuration, use default\r\n");
         mac = (u8*)&ap_info.bssid.array;
 		// this is MAC for Access Point, it's different than Client one
 		// see wifi_get_mac_address source
@@ -853,12 +861,12 @@ static int setup_wifi_open_access_point(void)
     wNetConfig.dhcp_mode = DHCP_SERVER;
     wNetConfig.wifi_retry_interval = 100;
     
-    PR_NOTICE("set ip info: %s,%s,%s\r\n",
+    bk_printf("set ip info: %s,%s,%s\r\n",
             wNetConfig.local_ip_addr,
             wNetConfig.net_mask,
             wNetConfig.dns_server_ip_addr);
     
-    PR_NOTICE("ssid:%s  key:%s\r\n", wNetConfig.wifi_ssid, wNetConfig.wifi_key);
+    bk_printf("ssid:%s  key:%s\r\n", wNetConfig.wifi_ssid, wNetConfig.wifi_key);
 	bk_wlan_start(&wNetConfig);
 
     return 0;    
@@ -920,23 +928,28 @@ void app_init(VOID)
 
 	setup_deviceNameUnique();
 
+
 	connect_to_wifi(DEFAULT_WIFI_SSID,DEFAULT_WIFI_PASS);
-	//setup_wifi_open_access_point();
   bk_wlan_status_register_cb(wl_status);
+	//setup_wifi_open_access_point();
 
 		// NOT WORKING, I done it other way, see ethernetif.c
 	//net_dhcp_hostname_set(g_shortDeviceName);
 
 	//demo_start_upd();
-	demo_start_tcp();
 #if 1
+	demo_start_tcp();
+#endif
+#if 0
 	PIN_LoadFromFlash();
 #else
 
 
 #endif
 
+#if 0
 	mqtt_example_init();
+#endif
 
   //return op_ret;
 }

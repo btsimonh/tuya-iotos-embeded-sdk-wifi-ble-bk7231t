@@ -173,7 +173,7 @@ void demo_sta_adv_app_init(char *oob_ssid,char *connect_key)
 	os_strcpy((char*)wNetConfigAdv.ap_info.ssid, oob_ssid);
 	hwaddr_aton("48:ee:0c:48:93:12", wNetConfigAdv.ap_info.bssid);
 	wNetConfigAdv.ap_info.security = SECURITY_TYPE_WPA2_MIXED;
-	wNetConfigAdv.ap_info.channel = 11;
+	wNetConfigAdv.ap_info.channel = 0;
 	
 	os_strcpy((char*)wNetConfigAdv.key, connect_key);
 	wNetConfigAdv.key_len = os_strlen(connect_key);
