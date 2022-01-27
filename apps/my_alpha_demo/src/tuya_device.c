@@ -1039,6 +1039,11 @@ void app_init(VOID)
 	PIN_LoadFromFlash();
 #else
 
+  init_ota(0x120000);
+  add_otadata((unsigned char *)"hello", 5);
+  add_otadata((unsigned char *)" hello2", 7);
+  close_ota();
+
 
 #endif
 
