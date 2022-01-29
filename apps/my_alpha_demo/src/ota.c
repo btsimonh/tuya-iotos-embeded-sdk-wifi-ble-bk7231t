@@ -17,6 +17,7 @@ int init_ota(startaddr){
             return 0;
         }
         sector = os_malloc(SECTOR_SIZE);
+        sectorlen = 0;
         addr = startaddr;
         addLog("init OTS, strataddr 0x%x\n", startaddr);
         return 1;
