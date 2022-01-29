@@ -12,6 +12,7 @@
 
 #include "new_common.h"
 #include "logging.h"
+#include "http_client.h"
 
 #define bk_printf(x, ...) addLog(x, ##__VA_ARGS__)
 
@@ -126,13 +127,13 @@ void tcp_client_thread( beken_thread_arg_t arg )
                 goto exit;
             }
   
-      bk_printf( "TCP received string %s\n",buf );
-		  
-		HTTP_ProcessPacket(buf, reply, replyBufferSize);
+            bk_printf( "TCP received string %s\n",buf );
+            
+            HTTP_ProcessPacket(buf, reply, replyBufferSize);
 
-		///	strcpy(buf,"[WB2S example TCP reply!]");
-			len = strlen(reply);
-      bk_printf( "TCP sending reply len %i\n",len );
+            ///	strcpy(buf,"[WB2S example TCP reply!]");
+            len = strlen(reply);
+            bk_printf( "TCP sending reply len %i\n",len );
             len = send( fd, reply, len, 0 );
 
             rtos_delay_milliseconds(10);
@@ -458,6 +459,79 @@ static void app_my_channel_toggle_callback(int channel, int iVal)
     bk_printf("Channel has changed! Publishing change %i with %i \n",channel,iVal);
 	example_publish(mqtt_client,channel,iVal);
 }
+
+#define HTTPCLIENTTEST
+
+#ifdef HTTPCLIENTTEST
+
+httprequest_t httprequest;
+int total_bytes = 0;
+
+int myhttpclientcallback(httprequest_t* request){
+
+  httpclient_t *client = &request->client;
+  httpclient_data_t *client_data = &request->client_data;
+
+  // NOTE: Called from the client thread, beware
+  total_bytes += request->client_data.response_buf_filled;
+  addLog("\r\nmyhttpclientcallback state %d total %d/%d\r\n", request->state, total_bytes, request->client_data.response_content_len);
+  //rtos_delay_milliseconds(500);
+
+  if (request->state == 2){
+    //os_free(client_data->response_buf);
+    client_data->response_buf = (void*)0;
+    client_data->response_buf_len = 0;
+  }
+  rtos_delay_milliseconds(100);
+
+  return 0;
+}
+
+  // NOTE: these MUST persist
+// note: url must have a '/' after host, else it can;t parse it.. 
+char *url = "http://raspberrypi/firmware";
+char *header = "";//"deviceKey:FZoo0S07CpwUHcrt\r\n";
+char *content_type = "text/csv";
+char *post_data = "1,,I am string!";
+#define BUF_SIZE 1024
+
+char *http_buf = (void *)0;
+
+void startrequest(){
+  httprequest_t *request = &httprequest;
+  if (request->state == 1){
+    addLog("********************http in progress, not starting another\r\n");
+    return;
+  }
+
+  total_bytes = 0;
+  memset(request, 0, sizeof(*request));
+  httpclient_t *client = &request->client;
+  httpclient_data_t *client_data = &request->client_data;
+
+  if (http_buf == NULL){
+    http_buf = os_malloc(BUF_SIZE+1); 
+    if (http_buf == NULL) {
+        addLog("startrequest Malloc failed.\r\n");
+        return;
+    }
+    memset(http_buf, 0, BUF_SIZE);
+  }
+  client_data->response_buf = http_buf;  //Sets a buffer to store the result.
+  client_data->response_buf_len = BUF_SIZE;  //Sets the buffer size.
+  httpclient_set_custom_header(&client, header);  //Sets the custom header if needed.
+  client_data->post_buf = post_data;  //Sets the user data to be posted.
+  client_data->post_buf_len = strlen(post_data);  //Sets the post data length.
+  client_data->post_content_type = content_type;  //Sets the content type.
+  request->data_callback = &myhttpclientcallback; 
+  request->port = 1880;//HTTP_PORT;
+  request->url = url;
+  request->method = HTTPCLIENT_GET; 
+  request->timeout = 10000;
+  async_request(request);
+ }
+#endif
+
 int loopsWithDisconnected = 0;
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x "
@@ -474,6 +548,12 @@ static void app_led_timer_handler(void *data)
 	}
 
 	cnt ++;
+
+#ifdef HTTPCLIENTTEST
+  if (!(cnt % 20) && cnt){
+    startrequest();
+  }
+#endif
 
 
     // print IP info
@@ -587,7 +667,7 @@ static void app_led_timer_handler(void *data)
     }
 
 
-    bk_printf("Timer is %i\n",cnt);
+    bk_printf("Timer is %i free mem %d\r\n", cnt, xPortGetFreeHeapSize());
 }
 
 void myInit()
@@ -1039,12 +1119,13 @@ void app_init(VOID)
 	PIN_LoadFromFlash();
 #else
 
+#endif
+
+#if 0
   init_ota(0x120000);
   add_otadata((unsigned char *)"hello", 5);
   add_otadata((unsigned char *)" hello2", 7);
   close_ota();
-
-
 #endif
 
 #if 0
