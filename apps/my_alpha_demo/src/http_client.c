@@ -546,6 +546,8 @@ int httpclient_retrieve_content(httpclient_t *client, char *data, int len, uint3
         http_flash_init();
         http_wr_to_flash(data,len);
         #endif
+        os_memcpy(client_data->response_buf, data, len);
+        client_data->response_buf_filled = len;
         
         b_data =  os_malloc((TCP_LEN_MAX+1) * sizeof(char));
         //bk_http_ptr->do_data = 1;
@@ -960,6 +962,11 @@ static void httprequest_thread( beken_thread_arg_t arg )
     }
     addLog("httpclient_connect ret = %d", ret);
     //rtos_delay_milliseconds(500);
+    request->state = 0;  // start
+    request->client_data.response_buf_filled = 0;
+    if (request->data_callback){
+        request->data_callback(request);
+    }
 
     iotx_time_init(&timer);
     utils_time_countdown_ms(&timer, timeout_ms);
