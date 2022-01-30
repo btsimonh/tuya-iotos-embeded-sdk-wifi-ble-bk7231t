@@ -11,7 +11,7 @@ static void log_serial_thread( beken_thread_arg_t arg );
 static void startSerialLog();
 static void startLogServer();
 
-#define LOGSIZE 1024
+#define LOGSIZE 4096
 #define LOGPORT 9000
 
 int logTcpPort = LOGPORT;
@@ -25,7 +25,7 @@ static struct tag_logMemory {
 } logMemory;
 
 static int initialised = 0; 
-static char tmp[128];
+static char tmp[1024];
 
 static void initLog() {
     bk_printf("init log\r\n");
@@ -49,6 +49,15 @@ void addLog(char *fmt, ...){
     va_start(argList, fmt);
     vsprintf(tmp, fmt, argList);
     va_end(argList);
+
+//#define DIRECTLOG
+#ifdef DIRECTLOG
+    bk_printf(tmp);
+    if (taken = pdTRUE){
+        xSemaphoreGive( logMemory.mutex );
+    }
+    return;
+#endif    
 
     int len = strlen(tmp);
 
@@ -214,7 +223,7 @@ static void log_client_thread( beken_thread_arg_t arg )
                 break;
             }
         }
-        rtos_delay_milliseconds(100);
+        rtos_delay_milliseconds(10);
     }
 	
 exit:
@@ -235,6 +244,6 @@ static void log_serial_thread( beken_thread_arg_t arg )
         if (count){
             bk_printf(seriallogbuf);
         }
-        rtos_delay_milliseconds(100);
+        rtos_delay_milliseconds(10);
     }
 }
