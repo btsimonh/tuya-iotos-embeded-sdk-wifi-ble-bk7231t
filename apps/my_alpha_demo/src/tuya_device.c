@@ -472,26 +472,28 @@ int myhttpclientcallback(httprequest_t* request){
   httpclient_t *client = &request->client;
   httpclient_data_t *client_data = &request->client_data;
 
+  // NOTE: Called from the client thread, beware
+  total_bytes += request->client_data.response_buf_filled;
+
   switch(request->state){
     case 0: // start
-      init_ota(0xff000);
+      //init_ota(0xff000);
+      init_ota(0x132000);
+      addLog("\r\nmyhttpclientcallback state %d total %d/%d\r\n", request->state, total_bytes, request->client_data.response_content_len);
       break;
     case 1: // data
       if (request->client_data.response_buf_filled){
-        char tmp[40];
-        sprintf(tmp, "%39s", request->client_data.response_buf);
-        addLog("Data: %s\r\n", tmp);
-        add_otadata(request->client_data.response_buf, request->client_data.response_buf_filled);
+        unsigned char *d = request->client_data.response_buf;
+        int l = request->client_data.response_buf_filled;
+        add_otadata(d, l);
       }
       break;
     case 2: // ended, write any remaining bytes to the sector
       close_ota();
+      addLog("\r\nmyhttpclientcallback state %d total %d/%d\r\n", request->state, total_bytes, request->client_data.response_content_len);
       break;
   }
 
-  // NOTE: Called from the client thread, beware
-  total_bytes += request->client_data.response_buf_filled;
-  addLog("\r\nmyhttpclientcallback state %d total %d/%d\r\n", request->state, total_bytes, request->client_data.response_content_len);
   //rtos_delay_milliseconds(500);
 
   if (request->state == 2){
@@ -499,7 +501,7 @@ int myhttpclientcallback(httprequest_t* request){
     client_data->response_buf = (void*)0;
     client_data->response_buf_len = 0;
   }
-  rtos_delay_milliseconds(10);
+  //rtos_delay_milliseconds(100);
 
   return 0;
 }

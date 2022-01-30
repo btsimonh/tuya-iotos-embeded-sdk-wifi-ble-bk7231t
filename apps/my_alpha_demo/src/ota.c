@@ -44,6 +44,7 @@ void close_ota(){
 
 void add_otadata(unsigned char *data, int len){
     if (!sector) return;
+    addLog("OTA DataRxed start: %02.2x %02.2x len %d\r\n", data[0], data[1], len);
 
     while (len){
         if (sectorlen < SECTOR_SIZE){
@@ -53,7 +54,7 @@ void add_otadata(unsigned char *data, int len){
             data += lenstore;
             len -= lenstore;
             sectorlen += lenstore;
-            addLog("OTA add %x\n", lenstore);
+            addLog("OTA sector start: %02.2x %02.2x len %d\r\n", sector[0], sector[1], sectorlen);
         }
 
         if (sectorlen == SECTOR_SIZE){
