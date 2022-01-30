@@ -17,6 +17,7 @@
 #include "mem_pub.h"
 #include "str_pub.h"
 #include "rtos_pub.h"
+#include "../logging/logging.h"
 
 //#include "new_common.h"
 #include "iot_export_errno.h"

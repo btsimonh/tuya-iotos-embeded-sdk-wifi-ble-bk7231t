@@ -36,17 +36,17 @@ APP_PATH=../../../apps
 
 for i in `find ${APP_PATH}/$APP_BIN_NAME/src -type d`
 do
-    echo rm -rf $i/*.o
+    rm -rf $i/*.o
 done
 
 for i in `find ../tuya_common/src -type d`
 do
-    echo rm -rf $i/*.o
+    rm -rf $i/*.o
 done
 
 for i in `find ../../../components -type d`
 do
-    echo rm -rf $i/*.o
+    rm -rf $i/*.o
 done
 
 if [ -z $CI_PACKAGE_PATH ]; then

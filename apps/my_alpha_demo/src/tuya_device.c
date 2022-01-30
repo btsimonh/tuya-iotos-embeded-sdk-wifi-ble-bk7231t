@@ -11,8 +11,9 @@
  */
 
 #include "new_common.h"
-#include "logging.h"
-#include "http_client.h"
+#include "logging/logging.h"
+#include "httpclient/http_client.h"
+#include "ota/ota.h"
 
 #define bk_printf(x, ...) addLog(x, ##__VA_ARGS__)
 

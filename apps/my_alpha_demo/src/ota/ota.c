@@ -1,5 +1,6 @@
 #include "typedef.h"
 #include "flash_pub.h"
+#include "../logging/logging.h"
 
 
 static unsigned char *sector = (void *)0;
