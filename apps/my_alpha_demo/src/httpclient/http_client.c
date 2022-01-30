@@ -22,10 +22,10 @@
 //#include "new_common.h"
 #include "iot_export_errno.h"
 
-#define log_err addLog
-#define log_debug addLog
-#define log_info addLog
-#define log_warning addLog
+#define log_err(a, ...)
+#define log_debug(a, ...)
+#define log_info(a, ...)
+#define log_warning(a, ...)
 
 
 #define HTTPCLIENT_MIN(x,y) (((x)<(y))?(x):(y))
@@ -44,7 +44,7 @@
 
 
 
-static int httpclient_parse_host(const char *url, char *host, uint32_t maxhost_len);
+static int httpclient_parse_host(const char *url, char *host, int *port, uint32_t maxhost_len);
 static int httpclient_parse_url(const char *url, char *scheme, uint32_t max_scheme_len, char *host,
                                 uint32_t maxhost_len, int *port, char *path, uint32_t max_path_len);
 static int httpclient_conn(httpclient_t *client);
@@ -150,11 +150,23 @@ int httpclient_parse_url(const char *url, char *scheme, uint32_t max_scheme_len,
     return SUCCESS_RETURN;
 }
 
-int httpclient_parse_host(const char *url, char *host, uint32_t maxhost_len)
+int httpclient_parse_host(const char *url, char *host, int *port, uint32_t maxhost_len)
 {
     const char *host_ptr = (const char *) os_strstr(url, "://");
     uint32_t host_len = 0;
     char *path_ptr;
+
+    log_err("Parse url %s\r\n", url);
+
+    if (!strncmp(url, "HTTPS://", 8)){
+        log_err("HTTPS:// found -> port 443\r\n");
+        *port = 443;
+    } else {
+        if (!strncmp(url, "HTTP://", 7)){
+            log_err("HTTP:// found -> port 80\r\n");
+            *port = 80;
+        }
+    }
 
     if (host_ptr == NULL) {
         log_err("Could not find host");
@@ -163,9 +175,7 @@ int httpclient_parse_host(const char *url, char *host, uint32_t maxhost_len)
     host_ptr += 3;
 
     path_ptr = os_strchr(host_ptr, '/');
-    if (host_len == 0) {
-        host_len = path_ptr - host_ptr;
-    }
+    host_len = path_ptr - host_ptr;
 
     if (maxhost_len < host_len + 1) {
         /* including NULL-terminating char */
@@ -174,6 +184,19 @@ int httpclient_parse_host(const char *url, char *host, uint32_t maxhost_len)
     }
     os_memcpy(host, host_ptr, host_len);
     host[host_len] = '\0';
+
+    // parse port from host, and truncate host if found.
+    char *port_ptr = os_strchr(host, ':');
+    if (port_ptr){
+        *port_ptr = 0;
+        port_ptr++;
+        int p = 0;
+        int num = sscanf(port_ptr, "%d", &p);
+        if (num == 1){
+            *port = p;
+        }
+        log_err("Host split into %s port %d\r\n", host, *port);
+    }
 
     return SUCCESS_RETURN;
 }
@@ -886,7 +909,7 @@ int httpclient_common(httpclient_t *client, const char *url, int port, const cha
 
     if (0 == client->net.handle) {
         //Establish connection if no.
-    	httpclient_parse_host(url, host, sizeof(host));
+    	httpclient_parse_host(url, host, &port, sizeof(host));
     	log_debug("host: '%s', port: %d\r\n", host, port);
 
     	iotx_net_init(&client->net, host, port, ca_crt);
@@ -959,7 +982,7 @@ static void httprequest_thread( beken_thread_arg_t arg )
     int method = request->method;
     int timeout_ms = request->timeout;
 
-    addLog("start request thread\r\n");
+    //addLog("start request thread\r\n");
     //rtos_delay_milliseconds(500);
 
 
@@ -967,7 +990,7 @@ static void httprequest_thread( beken_thread_arg_t arg )
         httpclient_set_custom_header(client, header);  //Sets the custom header if needed.
     }
 
-    addLog("after httpclient_set_custom_header\r\n");
+    //addLog("after httpclient_set_custom_header\r\n");
     //rtos_delay_milliseconds(500);
 
     iotx_time_t timer;
@@ -978,9 +1001,9 @@ static void httprequest_thread( beken_thread_arg_t arg )
 
     if (0 == client->net.handle) {
         //Establish connection if no.
-        addLog("before httpclient_parse_host\r\n");
+        //addLog("before httpclient_parse_host\r\n");
         //rtos_delay_milliseconds(500);
-    	ret = httpclient_parse_host(url, host, sizeof(host));
+    	ret = httpclient_parse_host(url, host, &port, sizeof(host));
 
         if (ret != SUCCESS_RETURN){
             request->state = -1;
@@ -994,11 +1017,11 @@ static void httprequest_thread( beken_thread_arg_t arg )
         //rtos_delay_milliseconds(500);
 
     	iotx_net_init(&client->net, host, port, ca_crt);
-        addLog("after iotx_net_init\r\n");
+        //addLog("after iotx_net_init\r\n");
         //rtos_delay_milliseconds(500);
 
     	ret = httpclient_connect(client);
-        addLog("after httpclient_connect %d\r\n", ret);
+        //addLog("after httpclient_connect %d\r\n", ret);
         //rtos_delay_milliseconds(500);
     	if (0 != ret) {
             addLog("httpclient_connect is error,ret = %d", ret);
@@ -1021,7 +1044,7 @@ static void httprequest_thread( beken_thread_arg_t arg )
             goto exit;
         }
     }
-    addLog("httpclient_connect ret = %d", ret);
+    //addLog("httpclient_connect ret = %d", ret);
     //rtos_delay_milliseconds(500);
     request->state = 0;  // start
     request->client_data.response_buf_filled = 0;
@@ -1032,7 +1055,7 @@ static void httprequest_thread( beken_thread_arg_t arg )
     iotx_time_init(&timer);
     utils_time_countdown_ms(&timer, timeout_ms);
 
-    addLog("rx buflen %d", client_data->response_buf_len);
+    //addLog("rx buflen %d", client_data->response_buf_len);
     //rtos_delay_milliseconds(500);
 
     if ((NULL != client_data->response_buf)
@@ -1040,7 +1063,7 @@ static void httprequest_thread( beken_thread_arg_t arg )
         do {
             // parse headers, fill client_data->response_buf up to max client_data->response_buf_len-1
             ret = httpclient_recv_response(client, iotx_time_left(&timer), client_data);
-            addLog("httpclient_recv_response is ret = %d is_more %d", ret, client_data->is_more);
+            //addLog("httpclient_recv_response is ret = %d is_more %d", ret, client_data->is_more);
             //rtos_delay_milliseconds(500);
             if (ret < 0) {
                 addLog("httpclient_recv_response is error,ret = %d", ret);
@@ -1054,7 +1077,7 @@ static void httprequest_thread( beken_thread_arg_t arg )
             }
             request->state = 1;
             if (request->data_callback){
-                addLog("calling callback");
+                //addLog("calling callback");
                 //rtos_delay_milliseconds(500);
                 if (request->data_callback(request)){
                     // abort on user request
@@ -1067,7 +1090,7 @@ static void httprequest_thread( beken_thread_arg_t arg )
         addLog("httpclient - no response buff");
     }
 exit:
-    addLog("close http channel");
+    //addLog("close http channel");
     httpclient_close(client);
     request->state = 2;  // complete
     request->client_data.response_buf_filled = 0;

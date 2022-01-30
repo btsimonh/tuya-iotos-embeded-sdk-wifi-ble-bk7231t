@@ -1,5 +1,6 @@
 
 
+#include "new_config.h"
 #include "new_common.h"
 #include "new_http.h"
 #include "new_pins.h"
@@ -447,6 +448,14 @@ void HTTP_ProcessPacket(const char *recvbuf, char *outbuf, int outBufSize) {
 
 		strcat(outbuf,htmlReturnToMenu);
 		strcat(outbuf,htmlEnd);
+	} else if(http_checkUrlBase(urlStr,"ota")) {
+		otarequest(DEFAULT_OTA_URL);
+		http_setup(outbuf, httpMimeTypeHTML);
+		strcat(outbuf,htmlHeader);
+		strcat(outbuf,"OTA Requested.");
+		strcat(outbuf,htmlReturnToMenu);
+		strcat(outbuf,htmlEnd);
+
 	} else {
 		http_setup(outbuf, httpMimeTypeHTML);
 		strcat(outbuf,htmlHeader);

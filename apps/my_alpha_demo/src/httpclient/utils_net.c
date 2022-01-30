@@ -13,7 +13,7 @@
 #include "str_pub.h"
 #include "mem_pub.h"
 
-#define log_err addLog
+#define log_err(x, ...)
 
 uintptr_t HAL_TCP_Establish(const char *host, uint16_t port)
 {

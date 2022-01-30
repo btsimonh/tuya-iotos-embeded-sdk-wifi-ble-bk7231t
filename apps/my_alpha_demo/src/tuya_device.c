@@ -461,97 +461,6 @@ static void app_my_channel_toggle_callback(int channel, int iVal)
 	example_publish(mqtt_client,channel,iVal);
 }
 
-#define HTTPCLIENTTEST
-
-#ifdef HTTPCLIENTTEST
-
-httprequest_t httprequest;
-int total_bytes = 0;
-
-int myhttpclientcallback(httprequest_t* request){
-
-  httpclient_t *client = &request->client;
-  httpclient_data_t *client_data = &request->client_data;
-
-  // NOTE: Called from the client thread, beware
-  total_bytes += request->client_data.response_buf_filled;
-
-  switch(request->state){
-    case 0: // start
-      //init_ota(0xff000);
-      init_ota(0x132000);
-      addLog("\r\nmyhttpclientcallback state %d total %d/%d\r\n", request->state, total_bytes, request->client_data.response_content_len);
-      break;
-    case 1: // data
-      if (request->client_data.response_buf_filled){
-        unsigned char *d = request->client_data.response_buf;
-        int l = request->client_data.response_buf_filled;
-        add_otadata(d, l);
-      }
-      break;
-    case 2: // ended, write any remaining bytes to the sector
-      close_ota();
-      addLog("\r\nmyhttpclientcallback state %d total %d/%d\r\n", request->state, total_bytes, request->client_data.response_content_len);
-      break;
-  }
-
-  //rtos_delay_milliseconds(500);
-
-  if (request->state == 2){
-    //os_free(client_data->response_buf);
-    client_data->response_buf = (void*)0;
-    client_data->response_buf_len = 0;
-  }
-  //rtos_delay_milliseconds(100);
-
-  return 0;
-}
-
-  // NOTE: these MUST persist
-// note: url must have a '/' after host, else it can;t parse it.. 
-char *url = "http://raspberrypi/firmware";
-char *header = "";//"deviceKey:FZoo0S07CpwUHcrt\r\n";
-char *content_type = "text/csv";
-char *post_data = "1,,I am string!";
-#define BUF_SIZE 1024
-
-char *http_buf = (void *)0;
-
-void startrequest(){
-  httprequest_t *request = &httprequest;
-  if (request->state == 1){
-    addLog("********************http in progress, not starting another\r\n");
-    return;
-  }
-
-  total_bytes = 0;
-  memset(request, 0, sizeof(*request));
-  httpclient_t *client = &request->client;
-  httpclient_data_t *client_data = &request->client_data;
-
-  if (http_buf == NULL){
-    http_buf = os_malloc(BUF_SIZE+1); 
-    if (http_buf == NULL) {
-        addLog("startrequest Malloc failed.\r\n");
-        return;
-    }
-    memset(http_buf, 0, BUF_SIZE);
-  }
-  client_data->response_buf = http_buf;  //Sets a buffer to store the result.
-  client_data->response_buf_len = BUF_SIZE;  //Sets the buffer size.
-  httpclient_set_custom_header(&client, header);  //Sets the custom header if needed.
-  client_data->post_buf = post_data;  //Sets the user data to be posted.
-  client_data->post_buf_len = strlen(post_data);  //Sets the post data length.
-  client_data->post_content_type = content_type;  //Sets the content type.
-  request->data_callback = &myhttpclientcallback; 
-  request->port = 1880;//HTTP_PORT;
-  request->url = url;
-  request->method = HTTPCLIENT_GET; 
-  request->timeout = 10000;
-  async_request(request);
- }
-#endif
-
 int loopsWithDisconnected = 0;
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x "
@@ -568,13 +477,6 @@ static void app_led_timer_handler(void *data)
 	}
 
 	cnt ++;
-
-#ifdef HTTPCLIENTTEST
-  if (cnt == 25){
-    startrequest();
-  }
-#endif
-
 
     // print IP info
     {
