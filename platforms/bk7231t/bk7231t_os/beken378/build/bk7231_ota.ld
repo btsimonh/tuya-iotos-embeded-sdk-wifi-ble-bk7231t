@@ -93,6 +93,11 @@ SECTIONS
 	_data_ram_begin = ADDR(.data);
 	_data_ram_end = .;
 
+
+	__exidx_start = .;
+	.ARM.exidx   : { *(.ARM.exidx* .gnu.linkonce.armexidx.*) } >sram
+	__exidx_end = .;
+
 /* uninitialized data section - global   int i; */
 	.bss ALIGN(8):
 	{

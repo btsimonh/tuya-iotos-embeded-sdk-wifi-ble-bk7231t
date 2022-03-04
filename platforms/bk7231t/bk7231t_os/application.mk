@@ -172,6 +172,7 @@ INCLUDES += -I./beken378/os/FreeRTOSv9.0.0
 # Source file list
 # -------------------------------------------------------------------
 SRC_C =
+SRC_CPP =
 DRAM_C =
 SRC_OS =
 
@@ -550,6 +551,11 @@ SRC_C_LIST = $(notdir $(SRC_C)) $(notdir $(DRAM_C))
 OBJ_LIST = $(addprefix $(OBJ_DIR)/,$(patsubst %.c,%.o,$(SRC_C_LIST)))
 DEPENDENCY_LIST = $(addprefix $(OBJ_DIR)/,$(patsubst %.c,%.d,$(SRC_C_LIST)))
 
+SRC_OPP = $(patsubst %.cpp,%.o,$(SRC_CPP))
+SRC_CPP_LIST = $(notdir $(SRC_CPP)) $(notdir $(DRAM_C))
+OBJ_PP_LIST = $(addprefix $(OBJ_DIR)/,$(patsubst %.cpp,%.o,$(SRC_CPP_LIST)))
+DEPENDENCY_PP_LIST = $(addprefix $(OBJ_DIR)/,$(patsubst %.cpp,%.d,$(SRC_CPP_LIST)))
+
 SRC_S_O = $(patsubst %.S,%.o,$(SRC_S))
 SRC_S_LIST = $(notdir $(SRC_S)) 
 OBJ_S_LIST = $(addprefix $(OBJ_DIR)/,$(patsubst %.S,%.o,$(SRC_S_LIST)))
@@ -567,6 +573,11 @@ CFLAGS += -g -mthumb -mcpu=arm968e-s -march=armv5te -mthumb-interwork -mlittle-e
 
 CFLAGS += -DPLATFORM_BK7231T=1
 
+CPPFLAGS =
+CPPFLAGS += -g -mthumb -mcpu=arm968e-s -march=armv5te -mthumb-interwork -mlittle-endian -Os -ffunction-sections -Wall -fsigned-char -fdata-sections -Wunknown-pragmas -nostdlib -Wno-unused-function -Wno-unused-but-set-variable
+CPPFLAGS += -DPLATFORM_BK7231T=1
+
+
 OSFLAGS =
 OSFLAGS += -g -marm -mcpu=arm968e-s -march=armv5te -mthumb-interwork -mlittle-endian -Os -std=c99 -ffunction-sections -Wall -fsigned-char -fdata-sections -Wunknown-pragmas
 
@@ -579,6 +590,7 @@ LFLAGS += -g -Wl,--gc-sections -marm -mcpu=arm968e-s -mthumb-interwork -nostdlib
 LIBFLAGS =
 LIBFLAGS += -L./beken378/lib/ -lrwnx
 LIBFLAGS += -L./beken378/lib/ -lble
+# LIBFLAGS += -Lstdc++
 
 # Compile
 # -------------------------------------------------------------------
@@ -588,6 +600,7 @@ LIBFLAGS += -L./beken378/lib/ -lble
 # LIBFLAGS += -L $(TOP_DIR)/sdk/lib/ -ltuya_iot
 CFLAGS += -DUSER_SW_VER=\"$(USER_SW_VER)\" -DAPP_BIN_NAME=\"$(APP_BIN_NAME)\"
 
+CPPFLAGS += -DUSER_SW_VER=\"$(USER_SW_VER)\" -DAPP_BIN_NAME=\"$(APP_BIN_NAME)\"
 
 # -------------------------------------------------------------------
 # add tuya application components.mk
@@ -610,9 +623,11 @@ TY_SRC_DIRS += $(shell find $(TOP_DIR)/apps/$(APP_BIN_NAME)/src -type d)
 TY_SRC_DIRS += $(shell find ../tuya_os_adapter/src -type d)
 
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.c)) # need export
-SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.cpp)) 
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.s)) 
 SRC_C += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.S)) 
+
+SRC_CPP += $(foreach dir, $(TY_SRC_DIRS), $(wildcard $(dir)/*.cpp)) 
+
 
 #TY_INC_DIRS += $(shell find $(TOP_DIR)/sdk -type d)
 SDK_INCLUDE_DIRS := $(shell find $(TOP_DIR)/sdk -name include -type d)
@@ -624,7 +639,7 @@ TY_INC_DIRS += $(shell find $(TOP_DIR)/apps/$(APP_BIN_NAME)/include -type d)
 
 INCLUDES += $(foreach base_dir, $(TY_INC_DIRS), $(addprefix -I , $(base_dir))) 
 
-$(TY_OBJS): %.o : %.c
+$(TY_OBJS): %.o : %.c*
 	echo "build $@ ..."
 	@$(CC) $(CFLAGS) $(TY_IOT_CFLAGS) $(INCLUDES) -c $< -o $@
 	@$(CC) $(CFLAGS) $(TY_IOT_CFLAGS) $(INCLUDES) -c $< -MM -MT $@ -MF $(OBJ_DIR)/$(notdir $(patsubst %.o,%.d,$@))
@@ -635,9 +650,9 @@ sinclude $(TY_DEPENDENCY_LIST)
 
 CUR_PATH = $(shell pwd)	
 .PHONY: application
-application: prerequirement $(SRC_O) $(SRC_S_O) $(SRC_OS_O) $(TY_IOT_LIB)
+application: prerequirement $(SRC_O) $(SRC_OPP) $(SRC_S_O) $(SRC_OS_O) $(TY_IOT_LIB)
 ifeq ("${ota_idx}", "1")
-	$(LD) $(LFLAGS) -o $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).axf  $(OBJ_LIST) $(OBJ_S_LIST) $(OBJ_OS_LIST) $(LIBFLAGS) -T./beken378/build/bk7231_ota.ld
+	$(LD) $(LFLAGS) -o $(TY_OUTPUT)/$(APP_BIN_NAME)_$(APP_VERSION).axf  $(OBJ_LIST) $(OBJ_PP_LIST) $(OBJ_S_LIST) $(OBJ_OS_LIST) $(LIBFLAGS) -T./beken378/build/bk7231_ota.ld
 else ifeq ("${ota_idx}", "2")
 else
 	@echo ===========================================================
@@ -671,6 +686,12 @@ $(SRC_O): %.o : %.c
 	@cp $@ $(OBJ_DIR)/$(notdir $@)
 	@chmod 777 $(OBJ_DIR)/$(notdir $@)
 
+$(SRC_OPP): %.o : %.cpp
+	@$(CC) $(CPPFLAGS) $(INCLUDES) -c $< -o $@
+	@$(CC) $(CPPFLAGS) $(INCLUDES) -c $< -MM -MT $@ -MF $(OBJ_DIR)/$(notdir $(patsubst %.o,%.d,$@))
+	@cp $@ $(OBJ_DIR)/$(notdir $@)
+	@chmod 777 $(OBJ_DIR)/$(notdir $@)
+
 $(SRC_S_O): %.o : %.S
 	@$(CC) $(ASMFLAGS) $(INCLUDES) -c $< -o $@
 	@$(CC) $(ASMFLAGS) $(INCLUDES) -c $< -MM -MT $@ -MF $(OBJ_DIR)/$(notdir $(patsubst %.o,%.d,$@))
@@ -684,6 +705,7 @@ $(SRC_OS_O): %.o : %.c
 	@chmod 777 $(OBJ_DIR)/$(notdir $@)
 
 -include $(DEPENDENCY_LIST)
+-include $(DEPENDENCY_PP_LIST)
 -include $(DEPENDENCY_S_LIST)
 -include $(DEPENDENCY_OS_LIST)
 
@@ -710,6 +732,7 @@ endif
 clean:
 	rm -rf $(TARGET)
 	rm -f $(SRC_O)
+	rm -f $(SRC_OPP)
 	rm -f $(SRC_S_O)
 	rm -f $(SRC_OS_O)
 	rm -rf $(TY_OBJS)
