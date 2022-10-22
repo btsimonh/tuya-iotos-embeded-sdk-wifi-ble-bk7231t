@@ -5,6 +5,9 @@
 #include "sys_rtos.h"
 #include "uart_pub.h"
 
+#define os_printf                      bk_printf
+
+
 INT32 os_memcmp(const void *s1, const void *s2, UINT32 n)
 {
     return memcmp(s1, s2, (unsigned int)n);
@@ -40,6 +43,8 @@ void *os_realloc(void *ptr, size_t size)
 	tmp = (void *)pvPortMalloc(size);
 	if(tmp)
 	{
+        // NOTE:::  This could copy from bad memory?
+        // it's copying too much...
 		os_memcpy(tmp, ptr, size);
 		vPortFree(ptr);
 	}
@@ -110,22 +115,142 @@ void os_free(void *ptr)
     }
 }
 
+#ifdef NOTHERE
 void *__wrap_malloc(size_t size)
 {    
+#ifdef __WRAP_DEBUG
 	os_printf("__wrap_malloc\r\n");
+#endif    
     return (void *)os_malloc(size);
 }
+#endif
+
+#ifdef NOTHERE
+void *__wrap_malloc_log(size_t size, const char *file, int line )
+{    
+#ifdef __WRAP_DEBUG
+//	os_printf("__wrap_malloc_log %s:%d - %u\r\n", file, line, size);
+#endif    
+    return (void *)os_malloc(size);
+}
+#endif
+
+void *__wrap_malloc(size_t size )
+{    
+#ifdef __WRAP_DEBUG
+    register uint32_t result; 
+    __asm volatile ("MOV %0, LR\n" : "=r" (result) ); 
+#endif
+    void* t = (void *)os_malloc(size);
+#ifdef __WRAP_DEBUG
+	os_printf("__wrap_malloc caller:0x%08X - %u @ %u\r\n", result, size, t);
+#endif
+
+    return t;
+}
+
+
+
+void * __wrap__malloc_r (void *p, size_t size)
+{
+#ifdef __WRAP_DEBUG
+	os_printf("__wrap__malloc_r\r\n");
+#endif    
+	return pvPortMalloc(size);
+}
+
 
 void * __wrap_zalloc(size_t size)
 {
+#ifdef __WRAP_DEBUG
 	os_printf("__wrap_zalloc\r\n");
+#endif    
 	return os_zalloc(size);
 }
 
+
+
+// from heap_4.c
+typedef struct A_BLOCK_LINK
+{
+	struct A_BLOCK_LINK *pxNextFreeBlock;	/*<< The next free block in the list. */
+	size_t xBlockSize;						/*<< The size of the free block. */
+} BlockLink_t;
+
+static const size_t xHeapStructSize	= ( sizeof( BlockLink_t ) + ( ( size_t ) ( portBYTE_ALIGNMENT - 1 ) ) ) & ~( ( size_t ) portBYTE_ALIGNMENT_MASK );
+static size_t xBlockAllocatedBit = (1<<31);
+/* Define the linked list structure.  This is used to link free blocks in order
+of their memory address. */
+
 void __wrap_free(void *ptr)
 {
-	os_printf("__wrap_free\r\n");
+#ifdef __WRAP_DEBUG
+	uint8_t *puc;
+	BlockLink_t *pxLink;
+	int presize, datasize;
+    int allocated;
+
+    register uint32_t result; 
+    __asm volatile ("MOV %0, LR\n" : "=r" (result) ); 
+    if (ptr == NULL){
+    	os_printf("__wrap_free of NULL from 0x%08X @ %u\r\n", result, ptr);
+        return;
+    }
+    puc = ( uint8_t * ) ptr;
+
+    puc -= xHeapStructSize;
+	pxLink = ( void * ) puc;
+	presize = (pxLink->xBlockSize & ~xBlockAllocatedBit);
+	datasize = presize - xHeapStructSize;
+	allocated = pxLink->xBlockSize & xBlockAllocatedBit;
+    if (!allocated){
+        os_printf("__wrap_free DOUBLEFREE from 0x%08X %d @ %u\r\n", result, datasize, ptr);
+    } else {
+        os_printf("__wrap_free from 0x%08X %d @ %u\r\n", result, datasize, ptr);
+    }
+#endif    
 	os_free(ptr);
 }
+
+void * __wrap_calloc (size_t a, size_t b)
+{
+	void *pvReturn;
+
+#ifdef __WRAP_DEBUG
+	os_printf("__wrap_calloc\r\n");
+#endif    
+    pvReturn = pvPortMalloc( a*b );
+    if (pvReturn)
+    {
+        os_memset(pvReturn, 0, a*b);
+    }
+
+    return pvReturn;
+}
+
+void * __wrap_realloc (void* pv, size_t size)
+{
+#ifdef __WRAP_DEBUG
+	os_printf("__wrap_realloc\r\n");
+#endif    
+	return pvPortRealloc(pv, size);
+}
+
+void __wrap__free_r (void *p, void *x)
+{
+#ifdef __WRAP_DEBUG
+	os_printf("__wrap__free_r\r\n");
+#endif    
+    __wrap_free(x);
+}
+
+void* __wrap__realloc_r (void *p, void* x, size_t sz)
+{
+#ifdef __WRAP_DEBUG
+    os_printf("__wrap__realloc_r\r\n");
+#endif    
+    return __wrap_realloc (x, sz);
+}
+
 
 // EOF

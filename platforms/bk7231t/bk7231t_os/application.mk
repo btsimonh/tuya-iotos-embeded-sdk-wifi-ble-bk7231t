@@ -593,8 +593,18 @@ ASMFLAGS += -g -marm -mthumb-interwork -mcpu=arm968e-s -march=armv5te -x assembl
 
 LFLAGS = 
 LFLAGS += -g -Wl,--gc-sections -marm -mcpu=arm968e-s -mthumb-interwork 
-# LFLAGS += -nostdlib
+#LFLAGS += -nostdlib
 LFLAGS += -Xlinker -Map=tuya.map  -Wl,-wrap,malloc -Wl,-wrap,free  -Wl,-wrap,zalloc
+# wrap all memory allocation
+# __wrap_xxx are in arch_mem.c, and call FreeRtos allocation routines.
+LFLAGS += -Wl,-wrap,malloc -Wl,-wrap,_malloc_r
+LFLAGS += -Wl,-wrap,free -Wl,-wrap,_free_r
+LFLAGS +=  -Wl,-wrap,zalloc -Wl,-wrap,calloc -Wl,-wrap,realloc -Wl,-wrap,_realloc_r
+LFLAGS +=  -Wl,-wrap,malloc_log
+CFLAGS += -D__WRAP_DEBUG=1
+
+#CFLAGS += -Dmalloc=malloc_log
+
 # ??
 #LFLAGS += --specs=nano.specs
 
@@ -602,6 +612,7 @@ LIBFLAGS =
 LIBFLAGS += -L./beken378/lib/ -lrwnx
 LIBFLAGS += -L./beken378/lib/ -lble
 LIBFLAGS += -lstdc++
+LIBFLAGS += -lc
 
 # Compile
 # -------------------------------------------------------------------
