@@ -7,6 +7,7 @@
 
 #define os_printf                      bk_printf
 
+#undef __WRAP_DEBUG
 
 INT32 os_memcmp(const void *s1, const void *s2, UINT32 n)
 {
@@ -121,17 +122,15 @@ void *__wrap_malloc(size_t size)
 #ifdef __WRAP_DEBUG
 	os_printf("__wrap_malloc\r\n");
 #endif    
-    return (void *)os_malloc(size);
-}
+    if(platform_is_in_interrupt_context())
+    {
+        os_printf("malloc_risk\r\n");
+    }
+#if OSMALLOC_STATISTICAL
+    return (void *)pvPortMalloc_cm(__FILE__, __LINE__, size, 0);
+#else
+    return (void *)pvPortMalloc(size);
 #endif
-
-#ifdef NOTHERE
-void *__wrap_malloc_log(size_t size, const char *file, int line )
-{    
-#ifdef __WRAP_DEBUG
-//	os_printf("__wrap_malloc_log %s:%d - %u\r\n", file, line, size);
-#endif    
-    return (void *)os_malloc(size);
 }
 #endif
 
@@ -141,14 +140,48 @@ void *__wrap_malloc(size_t size )
     register uint32_t result; 
     __asm volatile ("MOV %0, LR\n" : "=r" (result) ); 
 #endif
-    void* t = (void *)os_malloc(size);
+    if(platform_is_in_interrupt_context())
+    {
+        os_printf("malloc_risk\r\n");
+    }
+#if OSMALLOC_STATISTICAL
+    void* t = (void *)pvPortMalloc_cm(__FILE__, __LINE__, size, 0);
+#else
+    void* t = (void *)pvPortMalloc(size);
+#endif
+
 #ifdef __WRAP_DEBUG
-	os_printf("__wrap_malloc caller:0x%08X - %u @ %u\r\n", result, size, t);
+    if (t){
+	    os_printf("__wrap_malloc caller:0x%08X - %u @ %u\r\n", result, size, t);
+    } else {
+    	os_printf("__wrap_malloc #####FAIL##### caller:0x%08X - %u @ %u\r\n", result, size, t);
+    }
 #endif
 
     return t;
 }
 
+void *__wrap_os_malloc(size_t size )
+{    
+#ifdef __WRAP_DEBUG
+    register uint32_t result; 
+    __asm volatile ("MOV %0, LR\n" : "=r" (result) ); 
+#endif
+#if OSMALLOC_STATISTICAL
+    void* t = (void *)pvPortMalloc_cm(__FILE__, __LINE__, size, 0);
+#else
+    void* t = (void *)pvPortMalloc(size);
+#endif
+#ifdef __WRAP_DEBUG
+    if (t){
+	    os_printf("__wrap_os_malloc caller:0x%08X - %u @ %u\r\n", result, size, t);
+    } else {
+    	os_printf("__wrap_os_malloc #####FAIL##### caller:0x%08X - %u @ %u\r\n", result, size, t);
+    }
+#endif
+
+    return t;
+}
 
 
 void * __wrap__malloc_r (void *p, size_t size)
@@ -209,7 +242,65 @@ void __wrap_free(void *ptr)
         os_printf("__wrap_free from 0x%08X %d @ %u\r\n", result, datasize, ptr);
     }
 #endif    
-	os_free(ptr);
+    if(platform_is_in_interrupt_context())
+    {
+        os_printf("free_risk\r\n");
+    }
+    
+    if(ptr)
+    {        
+#if OSMALLOC_STATISTICAL
+        vPortFree_cm(__FILE__, __LINE__, ptr);
+#else
+        vPortFree(ptr);
+#endif
+    }
+}
+
+void __wrap_os_free(void *ptr)
+{
+#ifdef __WRAP_DEBUG
+	uint8_t *puc;
+	BlockLink_t *pxLink;
+	int presize, datasize;
+    int allocated;
+
+    register uint32_t result; 
+    __asm volatile ("MOV %0, LR\n" : "=r" (result) ); 
+    if (ptr == NULL){
+    	os_printf("__wrap_os_free of NULL from 0x%08X @ %u\r\n", result, ptr);
+        return;
+    }
+    puc = ( uint8_t * ) ptr;
+
+    puc -= xHeapStructSize;
+	pxLink = ( void * ) puc;
+	presize = (pxLink->xBlockSize & ~xBlockAllocatedBit);
+	datasize = presize - xHeapStructSize;
+	allocated = pxLink->xBlockSize & xBlockAllocatedBit;
+    if (!allocated){
+        os_printf("__wrap_os_free DOUBLEFREE from 0x%08X %d @ %u\r\n", result, datasize, ptr);
+    } else {
+        os_printf("__wrap_os_free from 0x%08X %d @ %u\r\n", result, datasize, ptr);
+    }
+#endif    
+    if(platform_is_in_interrupt_context())
+    {
+        os_printf("free_risk\r\n");
+    }
+    
+    if(ptr)
+    {        
+#if OSMALLOC_STATISTICAL
+        vPortFree_cm(__FILE__, __LINE__, ptr);
+#else
+        vPortFree(ptr);
+#endif
+    } else {
+#ifdef __WRAP_DEBUG
+        os_printf("__wrap_os_free of NULL from 0x%08X\r\n", result);
+#endif
+    }
 }
 
 void * __wrap_calloc (size_t a, size_t b)

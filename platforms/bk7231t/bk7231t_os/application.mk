@@ -600,7 +600,7 @@ LFLAGS += -Xlinker -Map=tuya.map  -Wl,-wrap,malloc -Wl,-wrap,free  -Wl,-wrap,zal
 LFLAGS += -Wl,-wrap,malloc -Wl,-wrap,_malloc_r
 LFLAGS += -Wl,-wrap,free -Wl,-wrap,_free_r
 LFLAGS +=  -Wl,-wrap,zalloc -Wl,-wrap,calloc -Wl,-wrap,realloc -Wl,-wrap,_realloc_r
-LFLAGS +=  -Wl,-wrap,malloc_log
+LFLAGS += -Wl,-wrap,os_malloc -Wl,-wrap,os_free
 CFLAGS += -D__WRAP_DEBUG=1
 
 #CFLAGS += -Dmalloc=malloc_log
